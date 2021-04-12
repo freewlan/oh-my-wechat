@@ -4,6 +4,30 @@ echo_with_date() {
   echo "[`date '+%H:%M:%S'`]" $1
 }
 
+omw_version=2.1.4
+echo_with_date "当前 Oh My WeChat 版本为 v${omw_version}"
+
+# 从 GitHub 获取 owm 版本号
+get_omw_latest_version_from_github() {
+  curl --retry 2 -I -s https://github.com/lmk123/oh-my-wechat/releases/latest | grep -i Location: | sed -n 's/.*\/v\(.*\)/\1/p'
+}
+
+get_download_url() {
+  echo https://github.com/MustangYM/WeChatExtension-ForMac/archive/v${1}.zip
+}
+
+get_latest_version() {
+  curl --retry 2 -I -s https://github.com/MustangYM/WeChatExtension-ForMac/releases/latest | grep -i Location: | sed -n 's/.*\/v\(.*\)/\1/p'
+}
+
+# 保存一下 -n 参数，给 install 方法作为参数用
+if [[ $* =~ "-n" ]]
+then
+  has_n="-n"
+else
+  has_n=""
+fi
+
 # select 提示语
 PS3='你的选择：'
 
@@ -57,10 +81,8 @@ download() {
       echo_with_date ${2}
     fi
     echo_with_date "开始下载微信小助手 v${1}……"
-    echo_with_date "如果下载速度很慢，建议通过其它方式下载安装包，然后使用 omw load 命令导入"
-    echo_with_date "详情请参阅文档 https://github.com/lmk123/oh-my-wechat#omw-load"
     # 下载压缩包
-    curl --retry 2 -L -o ${1}.zip https://github.com/MustangYM/WeChatExtension-ForMac/archive/v${1}.zip
+    curl --retry 2 -L -o ${1}.zip $(get_download_url $1)
     if [[ 0 -eq $? ]]; then
       # 解压为同名文件夹
       unzip -o -q ${1}.zip
@@ -76,7 +98,55 @@ download() {
 
 plist_path="${HOME}/Library/LaunchAgents/cn.limingkai.oh-my-wechat.plist"
 
+ask_for_auto_start() {
+  if [[ -e ${plist_path} ]]; then
+    echo_with_date "已开启开机自动安装微信小助手"
+  else
+    echo_with_date "未开启开机自动安装微信小助手"
+    echo_with_date "是否开启开机自动安装微信小助手, 以避免微信更新后卸载微信小助手？"
+    options=("是" "否")
+    select opt in "${options[@]}"
+    do
+      case ${opt} in
+        "是")
+          _to_open='yes'
+          break
+          ;;
+        "否")
+          _to_open='no'
+          break
+          ;;
+        *)
+          echo_with_date "无效的选择"
+          ;;
+        esac
+    done
+
+    if [[ $_to_open == "yes" ]]; then
+      open_auto_start
+    fi
+  fi
+}
+
 open_auto_start() {
+  echo_with_date "是否要在开机后自动打开微信？"
+  options=("是" "否")
+  select opt in "${options[@]}"
+  do
+    case ${opt} in
+      "是")
+        _is_open="-o"
+        break
+        ;;
+      "否")
+        break
+        ;;
+      *)
+        echo_with_date "无效的选择"
+        ;;
+      esac
+  done
+
   cat > ${plist_path} <<EOL
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -88,22 +158,22 @@ open_auto_start() {
     <array>
       <string>/usr/local/bin/omw</string>
       <string>silent</string>
-      <string>${1}</string>
+      <string>${_is_open}</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
   </dict>
 </plist>
 EOL
-  echo_with_date "已开启开机自启动"
+  echo_with_date "已开启微信小助手开机自动安装"
 }
 
 close_auto_start() {
   if [[ -e ${plist_path} ]]; then
     rm ${plist_path}
-    echo_with_date "已关闭开机自启动"
+    echo_with_date "已关闭开机自动安装微信小助手"
   else
-    echo_with_date "当前没有开启开机自启动"
+    echo_with_date "当前没有开启开机自动安装微信小助手"
   fi
 }
 
@@ -134,6 +204,33 @@ uninstall_plugin() {
   fi
 }
 
+omw_help() {
+  echo \
+'
+omw (Oh My WeChat) 是微信小助手(https://github.com/MustangYM/WeChatExtension-ForMac)的安装/更新工具
+
+用法:
+  omw                 安装或更新到最新版本小助手
+  omw -n              优先安装之前下载过的小助手，若没有才会通过网络下载最新版小助手并安装
+  omw load <version>  将自行下载的某版本的小助手的安装包导入到 Oh My WeChat 里并安装，详情见说明
+  omw open            开启开机自动安装微信小助手
+  omw close           关闭开机自动安装微信小助手
+  omw un              卸载 Oh My WeChat 或小助手. 你可以选择其中一个卸载，或者两个都卸载
+  omw update          更新 Oh My WeChat 自身
+
+说明:
+  * 微信自动更新后会删除小助手, 你可以运行 `omw open` 开启开机自动安装小助手的功能。
+    注意：刚开机时可能没有网络, 而且下载小助手可能会很慢, 所以建议先运行 `omw` 或 `omw load <cersion>`
+    下载一次安装包，这样开机后会优先使用已有的安装包安装小助手，无需重新下载。
+  * `omw load <version>` 使用方法:
+    首先，在浏览器里打开小助手最新版本发布页：
+       https://github.com/MustangYM/WeChatExtension-ForMac/releases/latest
+    然后，点击 Source code (zip) 将安装包下载下来。
+       若下载下来的版本是 v1.8.7，则下载文件夹内会有一个 WeChatExtension-ForMac-1.8.7.zip 安装包。
+    最后，在终端运行此命令导入安装包： cd ~/Downloads && omw load 1.8.7
+'
+}
+
 # 安装小助手
 install() {
 ########################################################################################
@@ -154,8 +251,13 @@ install() {
     if [[ $1 == "-n" ]] && [[ -z ${downloaded_version} ]]; then
       echo_with_date "未安装微信小助手，也没有下载过安装包，所以即使使用了 -n 参数，仍需要检查并下载新版本"
     fi
+
+    echo_with_date "将会从 GitHub 仓库检查更新及下载安装包，"
+    echo_with_date "如果检查更新失败或下载速度很慢，建议使用 omw load 命令导入安装包，"
+    echo_with_date "详情请参阅文档 https://github.com/lmk123/oh-my-wechat#omw-load"
+
     echo_with_date "正在查询新版本……"
-    latest_version=$(curl --retry 2 -I -s https://github.com/MustangYM/WeChatExtension-ForMac/releases/latest | grep -i Location | sed -n 's/.*\/v\(.*\)/\1/p')
+    latest_version=$(get_latest_version)
     if [[ -z "$latest_version" ]]; then
       echo_with_date "查询新版本时失败，请稍后重试"
       exit 1
@@ -206,24 +308,7 @@ fi
 
 # omw open
 if [[ $1 == "open" ]]; then
-  echo_with_date "安装完微信小助手后是否打开微信？"
-  options=("是" "否")
-  select opt in "${options[@]}"
-  do
-    case ${opt} in
-      "是")
-        _is_open="-o"
-        break
-        ;;
-      "否")
-        break
-        ;;
-      *)
-        echo_with_date "无效的选择"
-        ;;
-      esac
-  done
-  open_auto_start ${_is_open}
+  open_auto_start
   exit 0
 fi
 
@@ -284,5 +369,49 @@ if [[ $1 == "un" ]]; then
   exit 0
 fi
 
-install $1
-open_wechat
+# omw update
+if [[ $1 == "update" ]]; then
+  echo_with_date "正在检查 Oh My WeChat 是否有更新..."
+  omw_latest_version=$(get_omw_latest_version_from_github)
+  if [[ -z "$omw_latest_version" ]]; then
+    echo_with_date "查询 Oh My WeChat 新版本时失败，请稍后重试"
+    exit 1
+  else
+    omw_latest_version=${omw_latest_version//$'\r'/}
+    echo_with_date "Oh My WeChat 的最新版本为 v${omw_latest_version}"
+  fi
+  _omw_version=${omw_latest_version}
+
+  if [[ ${omw_version} == ${_omw_version} ]]; then
+    echo_with_date "当前已经安装了最新版本的 Oh My WeChat，无需重新安装"
+  else
+    omw_str="omw"
+    omw_work_dir="${HOME}/.oh_my_wechat"
+    omw_bin_file="${omw_work_dir}/${omw_str}"
+    # 下载要安装的版本
+    echo_with_date "开始下载 Oh My WeChat..."
+    curl --retry 2 -o ${omw_bin_file} https://omw.limingkai.cn/main.sh &> /dev/null
+
+    if [[ 0 -eq $? ]]; then
+      # 给 omw 添加执行权限
+      chmod 755 ${omw_bin_file}
+      echo_with_date "Oh My Wechat 更新完成。"
+    else
+      echo_with_date "下载更新时失败，请稍后重试。"
+      exit 1
+    fi
+  fi
+  exit 0
+fi
+
+if [[ $# -eq 0 ]] || [[ $# -eq 1 && $1 == "-n" ]]; then
+  install ${has_n}
+  ask_for_auto_start
+  open_wechat
+  exit 0
+fi
+
+# if [[ $1 == "help" ]] || [[ $1 == "--help" ]] || [[ $1 == "-h" ]]; then
+omw_help
+# fi
+

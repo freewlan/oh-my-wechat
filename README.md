@@ -4,9 +4,9 @@
 
 ## 安装 Oh My WeChat
 
-在终端中运行 `curl -o- -L https://raw.githubusercontent.com/lmk123/oh-my-wechat/master/install.sh | bash -s` 即可。
+在终端中运行 `curl -o- -L https://omw.limingkai.cn/install.sh | bash -s` 即可。
 
-Oh My WeChat 自身没有自动更新的功能，不过你可以关注本项目（选择 Releases Only），这样在发布新版本时你能得到通知，然后你可以重新运行这条命令将 Oh My WeChat 更新到最新版本。
+安装之后，你可以运行 `omw update` 命令更新 Oh My WeChat。
 
 ## 使用 Oh My WeChat
 
@@ -18,13 +18,13 @@ Oh My WeChat 支持下面几条命令：
 
 运行 `omw` 会执行以下操作：
 
-1. 检查小助手有没有新版本，有则下载最新版本安装包并安装
+1. 检查小助手有没有新版本，有则从 GitHub 仓库下载最新版本安装包并安装
 2. 检测微信有没有安装小助手，没有则安装
 3. 最后，打开微信
 
-你还可以运行 `omw -n`，这样会跳过上面检查更新的步骤，优先使用下载过的安装包安装小助手。
+你还可以添加 `-n` 参数，以跳过检查更新的步骤，优先使用下载过的安装包安装小助手。
 
-如果下载安装包很慢，你可以使用 `omw load` 命令（后面有介绍）导入安装包，或者尝试用自己的梯子来下载：
+如果从 GitHub 仓库上下载安装包很慢，你可以使用 `omw load` 命令（后面有介绍）导入安装包，或者尝试用自己的梯子来下载：
 
 ```bash
 # 这里假设你的梯子在你电脑的 1087 端口开了个 HTTP 代理
@@ -34,7 +34,7 @@ $ omw
 
 ### `omw load`
 
-用 omw 从 GitHub 上下载安装包可能会非常慢，所以 Oh My WeChat 还提供了这条命令，可以直接将小助手的安装包导入到 Oh My WeChat 里。
+这条命令可以直接将小助手的安装包导入到 Oh My WeChat 里。
 
 你可以用浏览器打开[小助手的最新版本发布页](https://github.com/MustangYM/WeChatExtension-ForMac/releases/latest)，然后点击 _Source code (zip)_ 将安装包下载下来。假设现在最新版本是 v1.8.7，那么此时你的*下载文件夹*内会有一个 _WeChatExtension-ForMac-1.8.7.zip_ 安装包，接下来，你可以在终端内运行下面这条命令导入安装包：
 
@@ -55,6 +55,10 @@ $ cd ~/Downloads && omw load 1.8.7
 ### `omw un`
 
 卸载 Oh My WeChat 或小助手。你可以选择其中一个卸载，或者两个都卸载。
+
+### `omw update`
+
+更新 Oh My WeChat 自身。
 
 ## 运行截图
 
